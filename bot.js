@@ -1,14 +1,10 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
-const translate = require('@iamtraction/google-translate');
+const axios = require('axios');
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMessageReactions,
-  ],
-});
+const config = require('./config.json');
+const translate = require('@iamtraction/google-translate');
+const Tesseract = require('tesseract.js');
+const fetch = require('isomorphic-fetch');
 
 const prefix = '!';
 
@@ -115,10 +111,21 @@ const supportedLanguages = [
   { code: 'zu', emoji: ':flag_za:' }    // Zulu
 ];
 
+const supportedLanguageCodes = supportedLanguages.map(lang => lang.code);
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessageReactions,
+  ],
+});
 
 
 client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}`);
+  
 });
 
 client.on('messageCreate', async (message) => {
@@ -182,6 +189,45 @@ client.on('messageCreate', async (message) => {
           stack: error.stack,
         },
       });
+    }
+  } else if (command === 'translateimg') {
+    if (!message.attachments.size) {
+      return message.reply('No image attached. Please attach an image for translation.');
+    }
+
+    const targetLang = args.shift()?.toLowerCase();
+    if (!targetLang || !supportedLanguageCodes.includes(targetLang)) {
+      return message.reply(`Invalid or unsupported language code: ${targetLang}`);
+    }
+
+    try {
+      const attachment = message.attachments.first();
+      const response = await axios.get(attachment.url, { responseType: 'arraybuffer' });
+      const imageBuffer = Buffer.from(response.data);
+
+      const { data: { text } } = await Tesseract.recognize(imageBuffer, 'eng', {
+        lang: 'eng',
+      });
+
+      const result = await translate(text, { to: targetLang });
+
+      const translationEmbed = {
+        color: 0x0099ff,
+        title: 'Image Translation Result',
+        fields: [
+          { name: `Original Image:`, value: `[View Image](${attachment.url})`, inline: false },
+          { name: `Detected Text:`, value: text, inline: false },
+          { name: `Translation: ${supportedLanguages.find(lang => lang.code === targetLang)?.emoji || ''}`, value: result.text, inline: false },
+        ],
+        footer: {
+          text: `Translate Bot | Powered by Armour`,
+        },
+      };
+
+      message.channel.send({ embeds: [translationEmbed] });
+    } catch (error) {
+      console.error('Error during image translation:', error);
+      message.reply('An error occurred during image translation. Please try again.');
     }
   }
 });
