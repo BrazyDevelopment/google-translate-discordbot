@@ -186,4 +186,4 @@ client.on('messageCreate', async (message) => {
   }
 });
 
-client.login('MTE5NjY2Nzk2Njg0MzAwMjkwMA.GxJZNu.phJQpGTmkL3SOpJnhImpvwDv08rOeutZXKGdCo');
+client.login(config.token);
