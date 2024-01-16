@@ -1,5 +1,6 @@
-const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, ActivityType, EmbedBuilder } = require('discord.js');
 const axios = require('axios');
+
 const config = require('./config.json');
 const translate = require('@iamtraction/google-translate');
 const Tesseract = require('tesseract.js');
@@ -122,6 +123,10 @@ const client = new Client({
 
 
 client.on('ready', () => {
+  client.user.setPresence({
+    activities: [{ name: 'your translations!', type: ActivityType.Listening }],
+    status: 'dnd'
+});
   console.log(`Logged in as ${client.user.tag}`);
   
 });
@@ -143,7 +148,7 @@ client.on('messageCreate', async (message) => {
     // Check if the target language is a valid language code
     const supportedLanguageCodes = supportedLanguages.map(lang => lang.code);
     if (!supportedLanguageCodes.includes(targetLang)) {
-      return message.reply(`The language '${targetLang}' is not supported.`);
+      return message.reply(`The language '${targetLang}' is not supported. Please use one of the following:\n\n${supportedLanguageCodes}`);
     }
 
     try {
@@ -163,6 +168,8 @@ client.on('messageCreate', async (message) => {
         fields: [
           { name: `Original Text: ${supportedLanguages.find(lang => lang.code === fromLanguage)?.emoji || ''}`, value: textToTranslate, inline: false },
           { name: `Translation: ${supportedLanguages.find(lang => lang.code === toLanguage)?.emoji || ''}`, value: result.text, inline: false },
+          // {name: `From:`, value: `${fromLanguage} ${supportedLanguages.find(lang => lang.code === fromLanguage)?.emoji || ''}`}, 
+          // {name: `To:`, value: `${toLanguage} ${targetLangEmoji}`},
         ],
         footer: {
           text: `Translate Bot | Powered by Armour`,
@@ -224,6 +231,37 @@ client.on('messageCreate', async (message) => {
     } catch (error) {
       console.error('Error during image translation:', error);
       message.reply('An error occurred during image translation. Please try again.');
+    }
+  } else if (command === 'imgtotext') {
+    if (message.attachments.size !== 1) {
+      return message.reply('Please attach only one image for text extraction.');
+    }
+
+    try {
+      const attachment = message.attachments.first();
+      const response = await axios.get(attachment.url, { responseType: 'arraybuffer' });
+      const imageBuffer = Buffer.from(response.data);
+
+      const { data: { text } } = await Tesseract.recognize(imageBuffer, 'eng', {
+        lang: 'eng',
+      });
+
+      const textEmbed = {
+        color: 0x0099ff,
+        title: 'Text Extraction Result',
+        fields: [
+          { name: `Original Image:`, value: `[View Image](${attachment.url})`, inline: false },
+          { name: `Extracted Text:`, value: text, inline: false },
+        ],
+        footer: {
+          text: 'Translate Bot | Powered by Armour',
+        },
+      };
+
+      message.channel.send({ embeds: [textEmbed] });
+    } catch (error) {
+      console.error('Error during text extraction:', error);
+      message.reply('An error occurred during text extraction. Please try again.');
     }
   }
 });
