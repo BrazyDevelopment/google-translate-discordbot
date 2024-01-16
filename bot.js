@@ -1,10 +1,8 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const axios = require('axios');
-
 const config = require('./config.json');
 const translate = require('@iamtraction/google-translate');
 const Tesseract = require('tesseract.js');
-const fetch = require('isomorphic-fetch');
 
 const prefix = '!';
 
@@ -165,8 +163,6 @@ client.on('messageCreate', async (message) => {
         fields: [
           { name: `Original Text: ${supportedLanguages.find(lang => lang.code === fromLanguage)?.emoji || ''}`, value: textToTranslate, inline: false },
           { name: `Translation: ${supportedLanguages.find(lang => lang.code === toLanguage)?.emoji || ''}`, value: result.text, inline: false },
-          // {name: `From:`, value: `${fromLanguage} ${supportedLanguages.find(lang => lang.code === fromLanguage)?.emoji || ''}`}, 
-          // {name: `To:`, value: `${toLanguage} ${targetLangEmoji}`},
         ],
         footer: {
           text: `Translate Bot | Powered by Armour`,
