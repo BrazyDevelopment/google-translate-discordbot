@@ -9,7 +9,7 @@ A simple Discord Bot that utilises Google Translate and Tesseract API to transla
 5. Run `node bot.js` to start the bot.
 
 # Easy Installation: 
-1. Invite the bot to your server using https://translatebot.armour.dev/invite/
+1. Invite the bot to your server using https://translatebot.armour.dev/invite
 2. Give it the necessary permissions in the necessary channels and head to [Command Usage](#CommandUsage)
 
 # Installation Guide / Documentation
