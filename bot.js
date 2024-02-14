@@ -5,7 +5,7 @@ const config = require('./config.json');
 const translate = require('@iamtraction/google-translate');
 const Tesseract = require('tesseract.js');
 
-const prefix = '!';
+const prefix = '.';
 
 const supportedLanguages = [
   { code: 'af', emoji: ':flag_za:' },   // Afrikaans
@@ -118,6 +118,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.GuildMembers, // Add this line
   ],
 });
 
@@ -136,64 +137,10 @@ client.on('messageCreate', async (message) => {
 
   const args = message.content.slice(prefix.length).split(' ');
   const command = args.shift().toLowerCase();
+  
+  if (!command) return;
 
-  if (command === 'translate') {
-    if (args.length < 1) {
-      return message.reply('Usage: !translate [target_language_code] <text_to_translate>');
-    }
-
-    let targetLang = args.shift().toLowerCase();
-    const textToTranslate = args.join(' ');
-
-    // Check if the target language is a valid language code
-    const supportedLanguageCodes = supportedLanguages.map(lang => lang.code);
-    if (!supportedLanguageCodes.includes(targetLang)) {
-      return message.reply(`The language '${targetLang}' is not supported. Please use one of the following:\n\n${supportedLanguageCodes}`);
-    }
-
-    try {
-      const result = await translate(textToTranslate, { to: targetLang });
-
-      console.log(result);
-
-      const fromLanguage = result.from?.language?.iso || 'auto';
-      const toLanguage = result.to?.language?.iso || targetLang;
-
-      // Find the emoji corresponding to the target language
-      const targetLangEmoji = supportedLanguages.find(lang => lang.code === targetLang)?.emoji || '';
-
-      const translationEmbed = {
-        color: 0x0099ff,
-        title: 'Translation Result',
-        fields: [
-          { name: `Original Text: ${supportedLanguages.find(lang => lang.code === fromLanguage)?.emoji || ''}`, value: textToTranslate, inline: false },
-          { name: `Translation: ${supportedLanguages.find(lang => lang.code === toLanguage)?.emoji || ''}`, value: result.text, inline: false },
-          // {name: `From:`, value: `${fromLanguage} ${supportedLanguages.find(lang => lang.code === fromLanguage)?.emoji || ''}`}, 
-          // {name: `To:`, value: `${toLanguage} ${targetLangEmoji}`},
-        ],
-        footer: {
-          text: `Translate Bot | Powered by Armour`,
-        },
-      };
-
-      message.channel.send({ embeds: [translationEmbed] });
-    } catch (error) {
-      console.error('Error during translation:', error);
-      message.reply('An error occurred during translation. Please try again.');
-
-      // Log the complete error details
-      console.error('Translation Error Details:', {
-        command,
-        targetLang,
-        textToTranslate,
-        error: {
-          code: error.code,
-          message: error.message,
-          stack: error.stack,
-        },
-      });
-    }
-  } else if (command === 'translateimg') {
+  if (command === 'translateimg') {
     if (!message.attachments.size) {
       return message.reply('No image attached. Please attach an image for translation.');
     }
@@ -227,7 +174,8 @@ client.on('messageCreate', async (message) => {
         },
       };
 
-      message.channel.send({ embeds: [translationEmbed] });
+      // message.channel.send({ embeds: [translationEmbed] });
+      message.channel.send(`${message.author}, here is your translation from your **[image](${attachment.url})** to ${supportedLanguages.find(lang => lang.code === targetLang)?.emoji || ''}:\n\`\`\`${result.text}\`\`\`\n**Original Image:**\n`);
     } catch (error) {
       console.error('Error during image translation:', error);
       message.reply('An error occurred during image translation. Please try again.');
@@ -258,11 +206,76 @@ client.on('messageCreate', async (message) => {
         },
       };
 
-      message.channel.send({ embeds: [textEmbed] });
+      // message.channel.send({ embeds: [textEmbed] });
+      message.channel.send( `${message.author}, here is the raw text extraction from your **[image](${attachment.url})**:\n\n**\`\`\`${text}\`\`\`**\n\n**Original Image:**\n` );
     } catch (error) {
       console.error('Error during text extraction:', error);
       message.reply('An error occurred during text extraction. Please try again.');
+    } 
+  } else if (supportedLanguageCodes.includes(command)) {
+    const targetLang = command;
+    const textToTranslate = args.join(' ');
+
+    try {
+      const result = await translate(textToTranslate, { to: targetLang });
+
+      console.log(result);
+  
+      const fromLanguage = result.from?.language?.iso || 'auto';
+      const toLanguage = result.to?.language?.iso || command;
+  
+      // Find the emoji corresponding to the target language
+      const targetLangEmoji = supportedLanguages.find(lang => lang.code === command)?.emoji || '';
+  
+      console.log(`From: ${textToTranslate}`);
+      console.log(`To: ${result.text}`);
+      console.log(`Author: ${message.author}`);
+  
+      const translationEmbed = {
+        color: 0x0099ff,
+        title: 'Translation Result',
+        fields: [
+          { name: `Original Text: ${supportedLanguages.find(lang => lang.code === fromLanguage)?.emoji || ''}`, value: textToTranslate, inline: false },
+          { name: `Translation: ${targetLangEmoji || ''}`, value: result.text, inline: false },
+        ],
+        footer: {
+          text: `Translate Bot | Powered by Armour`,
+        },
+      };
+  
+      // message.channel.send({ embeds: [translationEmbed] });
+      message.reply(`${message.author}, here is your translation from ${supportedLanguages.find(lang => lang.code === fromLanguage)?.emoji || ''} to ${supportedLanguages.find(lang => lang.code === toLanguage)?.emoji || ''}:\n**\`\`\`${result.text}\`\`\`**`);
+    } catch (error) {
+      console.error('Error during translation:', error);
+      message.reply('An error occurred during translation. Please try again.');
+      console.error('Translation Error Details:', {
+        command,
+        targetLang: command,
+        textToTranslate,
+        error: {
+          code: error.code,
+          message: error.message,
+          stack: error.stack,
+        },
+      });
     }
+  } else if (command === 'setavatar') {
+      if (args.length !== 1) {
+        return message.reply(`Usage: ${prefix}setavatar [avatar_url]`);
+      }
+
+      const newAvatarUrl = args[0];
+
+      try {
+        await client.user.setAvatar(newAvatarUrl);
+        message.reply('Bot avatar updated successfully!');
+      } catch (error) {
+        console.error('Error updating bot avatar:', error);
+        message.reply('An error occurred while updating the bot avatar.');
+      }
+  } else {
+    // Handle invalid or unsupported command
+    message.reply(`Invalid command or language code. Please use one of the following commands:\n\n${supportedLanguageCodes}`);
   }
 });
 
