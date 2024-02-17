@@ -259,20 +259,6 @@ client.on('messageCreate', async (message) => {
         },
       });
     }
-  } else if (command === 'setavatar') {
-      if (args.length !== 1) {
-        return message.reply(`Usage: ${prefix}setavatar [avatar_url]`);
-      }
-
-      const newAvatarUrl = args[0];
-
-      try {
-        await client.user.setAvatar(newAvatarUrl);
-        message.reply('Bot avatar updated successfully!');
-      } catch (error) {
-        console.error('Error updating bot avatar:', error);
-        message.reply('An error occurred while updating the bot avatar.');
-      }
   } else {
     // Handle invalid or unsupported command
     message.reply(`Invalid command or language code. Please use one of the following commands:\n\n${supportedLanguageCodes}`);
